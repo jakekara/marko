@@ -28,8 +28,17 @@ class FootnoteDef(block.BlockElement):
     pattern = re.compile(r" {,3}\[\^([^\]]+)\]:[^\n\S]*(?=\S| {4})")
     priority = 6
 
-    def __init__(self, match):
-        self.label = helpers.normalize_label(match.group(1))
+    def __init__(self, match):        
+        raw_label = helpers.normalize_label(match.group(1))
+        if "=" in raw_label:
+            id, display_label = raw_label.split("=")
+        else:
+            display_label = raw_label
+            id = raw_label
+        self.label = raw_label
+        self.display = display_label
+        self.id = id
+
         self._prefix = re.escape(match.group())
         self._second_prefix = r" {1,4}"
 
@@ -52,7 +61,18 @@ class FootnoteRef(inline.InlineElement):
     priority = 6
 
     def __init__(self, match):
-        self.label = helpers.normalize_label(match.group(1))
+
+        raw_label = helpers.normalize_label(match.group(1))
+        if "=" in raw_label:
+            id, display_label = raw_label.split("=")
+        else:
+            display_label = raw_label
+            id = raw_label
+
+        self.label = raw_label
+        self.display = display_label
+        self.id = id
+
 
     @classmethod
     def find(cls, text):
@@ -68,13 +88,15 @@ class FootnoteRendererMixin:
         self.footnotes = []
 
     def render_footnote_ref(self, element):
+
         if element.label not in self.footnotes:
             self.footnotes.append(element.label)
-        idx = self.footnotes.index(element.label) + 1
+        
         return (
-            '<sup class="footnote-ref" id="fnref-{lab}">'
-            '<a href="#fn-{lab}">{id}</a></sup>'.format(
-                lab=self.escape_url(element.label), id=idx
+            '<sup class="footnote-ref" id="fnref-{id}">'
+            '<a href="#fn-{id}">{lab}</a></sup>'.format(
+                lab=self.escape_url(element.display),
+                id=self.escape_url(element.id)
             )
         )
 
@@ -83,13 +105,13 @@ class FootnoteRendererMixin:
 
     def _render_footnote_def(self, element):
         children = self.render_children(element).rstrip()
-        back = f'<a href="#fnref-{element.label}" class="footnote">&#8617;</a>'
+        back = f'<a href="#fnref-{element.id}" class="footnote">&#8617;</a>'
         if children.endswith("</p>"):
             children = re.sub(r"</p>$", f"{back}</p>", children)
         else:
             children = f"{children}<p>{back}</p>\n"
-        return '<li id="fn-{}">\n{}</li>\n'.format(
-            self.escape_url(element.label), children
+        return '<li id="fn-{}" data-label="{}">\n{}</li>\n'.format(
+            self.escape_url(element.id),  self.escape_url(element.display), children
         )
 
     def render_document(self, element):
