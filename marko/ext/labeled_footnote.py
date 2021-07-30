@@ -8,13 +8,14 @@ Usage::
 
     from marko import Markdown
 
-    text = 'Foo[^1]\\n\\n[^1]: This is a footnote.\\n'
+    text = 'Foo[^1=footnote-1]\\n\\n[^1=footnote-1]: This is a footnote.\\n'
     markdown = Markdown(extensions=['footnote'])
     print(markdown(text))
 
 """
 import re
 from marko import block, inline, helpers
+from urllib.parse import unquote
 
 
 class Document(block.Document):
@@ -31,7 +32,10 @@ class FootnoteDef(block.BlockElement):
     def __init__(self, match):        
         raw_label = helpers.normalize_label(match.group(1))
         if "=" in raw_label:
-            id, display_label = raw_label.split("=")
+            id, display_label = match.group(1).split("=")
+            display_label = unquote(display_label)
+            id = helpers.normalize_label(id)
+
         else:
             display_label = raw_label
             id = raw_label
@@ -64,7 +68,9 @@ class FootnoteRef(inline.InlineElement):
 
         raw_label = helpers.normalize_label(match.group(1))
         if "=" in raw_label:
-            id, display_label = raw_label.split("=")
+            id, display_label = match.group(1).split("=")
+            display_label = unquote(display_label)
+            id = helpers.normalize_label(id)
         else:
             display_label = raw_label
             id = raw_label
@@ -95,7 +101,7 @@ class FootnoteRendererMixin:
         return (
             '<sup class="footnote-ref" id="fnref-{id}">'
             '<a href="#fn-{id}">{lab}</a></sup>'.format(
-                lab=self.escape_url(element.display),
+                lab=element.display,
                 id=self.escape_url(element.id)
             )
         )
@@ -125,10 +131,10 @@ class FootnoteRendererMixin:
         return text + footnotes
 
 
-class Footnote:
+class LabeledFootnote:
     elements = [Document, FootnoteDef, FootnoteRef]
     renderer_mixins = [FootnoteRendererMixin]
 
 
 def make_extension():
-    return Footnote()
+    return LabeledFootnote()

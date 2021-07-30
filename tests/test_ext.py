@@ -7,15 +7,23 @@ class TestFootnote:
     def setup_method(self):
         self.markdown = Markdown()
         self.markdown.use("footnote")
+        self.markdown.use("labeled_footnote")
 
     def test_footnote(self):
         result = self.markdown("this is a footnote[^1].\n\n[^1]: foo\n")
         assert '<sup class="footnote-ref"' in result
-        assert 'foo<a href="#fnref-1" class="footnote">&#8617;</a>' in result
+        assert 'foo<a href="#fnref-1" class="footnote">&#8617;</a>' in result    
 
     def test_non_footnote(self):
         result = self.markdown("foo[^1]")
         assert result.rstrip() == "<p>foo[^1]</p>"
+
+    def test_labeled_footnote(self):
+        result = self.markdown("this is a labeled footnote[^10=Doe, 1998].\n\n[^10=Doe, 1998]: foo\n")
+        assert '<sup class="footnote-ref"' in result
+        assert 'href="#fn-10">Doe, 1998</a' in result
+        assert 'id="fnref-10"' in result
+        assert 'foo<a href="#fnref-10" class="footnote">&#8617;</a>' in result
 
 
 class TestToc:
